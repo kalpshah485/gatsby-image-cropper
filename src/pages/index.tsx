@@ -1,6 +1,13 @@
 import * as React from "react";
 import type { HeadFC, PageProps } from "gatsby";
 
+type RectPosition = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
 const IndexPage: React.FC<PageProps> = () => {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const imageRef = React.useRef<HTMLImageElement>(null);
@@ -9,12 +16,6 @@ const IndexPage: React.FC<PageProps> = () => {
   const btnRef = React.useRef<HTMLButtonElement>(null);
   const [imageLoaded, setImageLoaded] = React.useState<boolean>(false);
 
-  type RectPosition = {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  };
   let mouseDown: boolean,
     resizeML: boolean,
     resizeMT: boolean,
@@ -38,7 +39,17 @@ const IndexPage: React.FC<PageProps> = () => {
     rectPosition: RectPosition
   ) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(image, 5, 5);
+    ctx.drawImage(
+      image,
+      0,
+      0,
+      image.naturalWidth,
+      image.naturalHeight,
+      5,
+      5,
+      canvas.width - 10,
+      canvas.height - 10
+    );
     ctx.beginPath();
     ctx.rect(
       rectPosition.left,
@@ -431,6 +442,21 @@ const IndexPage: React.FC<PageProps> = () => {
     resetDragVars();
   }
 
+  function calculateRectPosition(position: number, param: "width" | "height") {
+    if (imageRef.current && canvasRef.current) {
+      if (param == "width")
+        return (
+          (imageRef.current.naturalWidth * position) / canvasRef.current.width
+        );
+      else
+        return (
+          (imageRef.current.naturalHeight * position) / canvasRef.current.height
+        );
+    } else {
+      throw new Error("image ref not defined");
+    }
+  }
+
   function cropImage() {
     const newCanvas = document.createElement("canvas");
     if (rectPosition) {
@@ -440,10 +466,18 @@ const IndexPage: React.FC<PageProps> = () => {
       if (newCtx && imageRef.current) {
         newCtx.drawImage(
           imageRef.current,
-          rectPosition.left - 5,
-          rectPosition.top - 5,
-          newCanvas.width,
-          newCanvas.height,
+          imageRef.current.naturalWidth < window.innerWidth
+            ? rectPosition.left - 5
+            : calculateRectPosition(rectPosition.left - 5, "width"),
+          imageRef.current.naturalHeight < window.innerHeight
+            ? rectPosition.top - 5
+            : calculateRectPosition(rectPosition.top - 5, "height"),
+          imageRef.current.naturalWidth < window.innerWidth
+            ? newCanvas.width
+            : calculateRectPosition(newCanvas.width + 5, "width"),
+          imageRef.current.naturalHeight < window.innerHeight
+            ? newCanvas.height
+            : calculateRectPosition(newCanvas.height + 5, "height"),
           0,
           0,
           newCanvas.width,
@@ -478,19 +512,34 @@ const IndexPage: React.FC<PageProps> = () => {
 
   React.useEffect(() => {
     if (imageRef.current) {
+      if (!ctx && canvasRef.current) {
+        ctx = canvasRef.current.getContext("2d");
+      }
       imageRef.current.onload = () => {
         if (canvasRef.current && imageRef.current) {
-          ctx = canvasRef.current.getContext("2d") || null;
-          canvasRef.current.width = imageRef.current.naturalWidth + 10;
-          canvasRef.current.height = imageRef.current.naturalHeight + 10;
+          let scale_factor = Math.min(
+            window.innerWidth / imageRef.current.naturalWidth,
+            window.innerHeight / imageRef.current.naturalHeight
+          );
+          console.log(scale_factor);
+          canvasRef.current.width =
+            imageRef.current.naturalWidth > window.innerWidth
+              ? imageRef.current.naturalWidth * scale_factor + 10
+              : imageRef.current.naturalWidth + 10;
+          canvasRef.current.height =
+            imageRef.current.naturalHeight > window.innerHeight
+              ? imageRef.current.naturalHeight * scale_factor + 10
+              : imageRef.current.naturalHeight + 10;
           rectPosition = {
-            left: 100,
-            top: 100,
-            width: canvasRef.current.width - 200,
-            height: canvasRef.current.height - 200,
+            left: Math.round(canvasRef.current.width / 10),
+            top: Math.round(canvasRef.current.height / 10),
+            width:
+              canvasRef.current.width - Math.round(canvasRef.current.width / 5),
+            height:
+              canvasRef.current.height -
+              Math.round(canvasRef.current.height / 5),
           };
           if (ctx) {
-            console.log("context created");
             canvasRef.current.addEventListener("mousemove", (e: MouseEvent) => {
               if (ctx) {
                 handleMouseMove(e, ctx);
@@ -499,9 +548,9 @@ const IndexPage: React.FC<PageProps> = () => {
             canvasRef.current.addEventListener("mousedown", handleMouseDown);
             canvasRef.current.addEventListener("mouseup", handleMouseUp);
             canvasRef.current.addEventListener("mouseout", handleMouseUp);
-            btnRef.current?.addEventListener("click", cropImage);
             ctx.strokeStyle = "#4d90fe";
             ctx.fillStyle = "#4d90fe";
+            console.log(ctx, canvasRef.current, imageRef.current, rectPosition);
             drawImageAndRect(
               ctx,
               canvasRef.current,
