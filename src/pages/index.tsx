@@ -516,7 +516,7 @@ const IndexPage: React.FC<PageProps> = () => {
         ctx = canvasRef.current.getContext("2d");
       }
       imageRef.current.onload = () => {
-        if (canvasRef.current && imageRef.current) {
+        if (canvasRef.current && imageRef.current && btnRef.current) {
           let scale_factor = Math.min(
             window.innerWidth / imageRef.current.naturalWidth,
             window.innerHeight / imageRef.current.naturalHeight
@@ -548,9 +548,9 @@ const IndexPage: React.FC<PageProps> = () => {
             canvasRef.current.addEventListener("mousedown", handleMouseDown);
             canvasRef.current.addEventListener("mouseup", handleMouseUp);
             canvasRef.current.addEventListener("mouseout", handleMouseUp);
+            btnRef.current.addEventListener("click", cropImage);
             ctx.strokeStyle = "#4d90fe";
             ctx.fillStyle = "#4d90fe";
-            console.log(ctx, canvasRef.current, imageRef.current, rectPosition);
             drawImageAndRect(
               ctx,
               canvasRef.current,
